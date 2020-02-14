@@ -1,0 +1,147 @@
+%timestamp: 
+% lat:   latitude of the oxts-unit (deg)
+% lon:   longitude of the oxts-unit (deg)
+% alt:   altitude of the oxts-unit (m)
+% roll:  roll angle (rad),    0 = level, positive = left side up,      range: -pi   .. +pi
+% pitch: pitch angle (rad),   0 = level, positive = front down,        range: -pi/2 .. +pi/2
+% yaw:   heading (rad),       0 = east,  positive = counter clockwise, range: -pi   .. +pi
+% vn:    velocity towards north (m/s)
+% ve:    velocity towards east (m/s)
+% vf:    forward velocity, i.e. parallel to earth-surface (m/s)
+% vl:    leftward velocity, i.e. parallel to earth-surface (m/s)
+% vu:    upward velocity, i.e. perpendicular to earth-surface (m/s)
+% ax:    acceleration in x, i.e. in direction of vehicle front (m/s^2)
+% ay:    acceleration in y, i.e. in direction of vehicle left (m/s^2)
+% ay:    acceleration in z, i.e. in direction of vehicle top (m/s^2)
+% af:    forward acceleration (m/s^2)
+% al:    leftward acceleration (m/s^2)
+% au:    upward acceleration (m/s^2)
+% wx:    angular rate around x (rad/s)
+% wy:    angular rate around y (rad/s)
+% wz:    angular rate around z (rad/s)
+% wf:    angular rate around forward axis (rad/s)
+% wl:    angular rate around leftward axis (rad/s)
+% wu:    angular rate around upward axis (rad/s)
+% pos_accuracy:  velocity accuracy (north/east in m)
+% vel_accuracy:  velocity accuracy (north/east in m/s)
+% navstat:       navigation status (see navstat_to_string)
+% numsats:       number of satellites tracked by primary GPS receiver
+% posmode:       position mode of primary GPS receiver (see gps_mode_to_string)
+% velmode:       velocity mode of primary GPS receiver (see gps_mode_to_string)
+% orimode:       orientation mode of primary GPS receiver (see gps_mode_to_string)
+clear all;
+clc;
+kitti_set = '2011_10_03';
+kitti_subset = '0027';
+kitti_path = '/media/joey/dataset/KITTI';
+%imu data path: we use the raw, unsynced data, which have high-rate but
+%biased imu data
+unsynced_data_path_for_imugnss = strcat(kitti_path,'/RawDataUnsync/',kitti_set,'/',...
+    kitti_set,'_drive_',kitti_subset,'_extract');
+%cam data path: we use the raw, synced data, which have corrected timeline
+%and bad frame removed
+data_path_for_cam = strcat(kitti_path,'/RawData/',kitti_set,'/',...
+    kitti_set,'_drive_',kitti_subset,'_sync');
+
+%% unsynced image data
+img0_path = strcat(data_path_for_cam,'/image_00');
+
+img_timestamp_raw = importdata(strcat(img0_path,'/','timestamps.txt'));
+img_timestamp_sec = posixtime(...
+                    datetime(   strcat(img_timestamp_raw.textdata(:,1),':',...
+                                num2str(img_timestamp_raw.data(:,1)),':',...
+                                num2str(fix(img_timestamp_raw.data(:,2))))...
+                            )...
+                         );
+                     
+img_timestamp_nsec = abs(rem(img_timestamp_raw.data(:,2), 1));
+img_timestamp_sec_init = img_timestamp_sec(1);
+img_timestamp_nsec_init = img_timestamp_nsec(1);
+
+img_timestamp = (img_timestamp_sec - img_timestamp_sec_init)...
+                + (img_timestamp_nsec - img_timestamp_nsec_init);
+%% unsynced imu data
+imu_data_path_base = strcat(data_path_for_imugnss,'/oxts');
+imu_data_path = strcat(imu_data_path_base,'/data');
+
+imu_data_list = dir([strcat(imu_data_path,'/'), '*.txt']);
+imu_file_len = length(imu_data_list);
+imu_data= zeros(imu_file_len, 30);
+for n=1:imu_file_len
+    str = strcat(imu_data_path, '/', imu_data_list(n).name);
+    validation_data = dlmread(str);
+    imu_data(n,:) = validation_data;
+end
+imu_timestamp_raw = importdata(strcat(imu_data_path_base,'/','timestamps.txt'));
+
+imu_timestamp_sec = posixtime(...
+                    datetime(   strcat(imu_timestamp_raw.textdata(:,1),':',...
+                                num2str(imu_timestamp_raw.data(:,1)),':',...
+                                num2str(fix(imu_timestamp_raw.data(:,2))))...
+                            )...
+                         );
+                     
+imu_timestamp_nsec = abs(rem(imu_timestamp_raw.data(:,2), 1));
+imu_timestamp_sec_init = imu_timestamp_sec(1);
+imu_timestamp_nsec_init = imu_timestamp_nsec(1);
+
+imu_timestamp = (imu_timestamp_sec - imu_timestamp_sec_init)...
+                + (imu_timestamp_nsec - imu_timestamp_nsec_init);
+imu_data = [imu_timestamp, imu_data];
+
+
+%% synced image data
+img0_path = strcat(data_path_for_cam,'/image_00');
+
+img_timestamp_raw = importdata(strcat(img0_path,'/','timestamps.txt'));
+img_timestamp_sec = posixtime(...
+                    datetime(   strcat(img_timestamp_raw.textdata(:,1),':',...
+                                num2str(img_timestamp_raw.data(:,1)),':',...
+                                num2str(fix(img_timestamp_raw.data(:,2))))...
+                            )...
+                         );
+                     
+img_timestamp_nsec = abs(rem(img_timestamp_raw.data(:,2), 1));
+img_timestamp_sec_init = img_timestamp_sec(1);
+img_timestamp_nsec_init = img_timestamp_nsec(1);
+
+img_timestamp = (img_timestamp_sec - img_timestamp_sec_init)...
+                + (img_timestamp_nsec - img_timestamp_nsec_init);
+%% synced imu data
+imu_sync_data_path_base = strcat(data_path_for_cam,'/oxts');
+imu_sync_data_path = strcat(imu_sync_data_path_base,'/data');
+
+imu_sync_data_list = dir([strcat(imu_sync_data_path,'/'), '*.txt']);
+imu_sync_file_len = length(imu_sync_data_list);
+imu_sync_data= zeros(imu_sync_file_len, 30);
+for n=1:imu_sync_file_len
+    str = strcat(imu_sync_data_path, '/', imu_sync_data_list(n).name);
+    validation_data = dlmread(str);
+    imu_sync_data(n,:) = validation_data;
+end
+imu_sync_timestamp_raw = importdata(strcat(imu_sync_data_path_base,'/','timestamps.txt'));
+
+imu_sync_timestamp_sec = posixtime(...
+                    datetime(   strcat(imu_sync_timestamp_raw.textdata(:,1),':',...
+                                num2str(imu_sync_timestamp_raw.data(:,1)),':',...
+                                num2str(fix(imu_sync_timestamp_raw.data(:,2))))...
+                            )...
+                         );
+                     
+imu_sync_timestamp_nsec = abs(rem(imu_sync_timestamp_raw.data(:,2), 1));
+imu_sync_timestamp_sec_init = imu_sync_timestamp_sec(1);
+imu_sync_timestamp_nsec_init = imu_sync_timestamp_nsec(1);
+
+imu_sync_timestamp = (imu_sync_timestamp_sec - imu_sync_timestamp_sec_init)...
+                + (imu_sync_timestamp_nsec - imu_sync_timestamp_nsec_init);
+imu_sync_data = [imu_sync_timestamp, imu_sync_data];
+
+%%
+clearvars -except imu_timestamp imu_data imu_timestamp_sec_init imu_timestamp_nsec_init ...
+    img_timestamp_sec_init img_timestamp_nsec_init img_timestamp...
+    imu_sync_data imu_sync_timestamp_sec_init imu_sync_timestamp_nsec_init imu_sync_timestamp 
+%save total_data.mat;
+
+
+
+
