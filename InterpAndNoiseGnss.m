@@ -1,15 +1,20 @@
 %% parameters
-good_bias = 1;
-bad_bias = 10;
-good_cov_multipler = 2;
+normal_cov_multipler = 2;
+normal_bias = 1;
+
 bad_cov_multipler = 5;
-bad_gnss_area = [   0   0       0   50;
-                    126 242     0  50;
-                    167 144     0   50;
-                    277 358     0   50;
-                    416 248     0   50;
-                    240 -128    0   50;
-                    -13 261     0   50];
+bad_gnss_area =	[	27      52	0	60	20;
+                    126     242	0	20	10;
+                    167     144	0   50  10;
+                    277     358	0   30  5;
+                    416     248	0   50  10;
+                    240     -73	0   60  5;
+                    -13     261	0   50  10];
+                
+good_cov_multipler = 1;
+good_gnss_area = [	110     368	0	50	0;
+                    -88     166	0	50	0;
+                    287     199	0	50	0;];
 %% plot orign data first
 [orign_e, orign_n, orign_u] = geodetic2enu(fixed_data(:,2),fixed_data(:,3),fixed_data(:,4),...
     fixed_data(1,2),fixed_data(1,3),fixed_data(1,4),wgs84Ellipsoid);
@@ -22,7 +27,7 @@ gnss_fig_h = figure;
     subplot(2,3,2);plot(fixed_data(:,1), fixed_data(:,3), 'r.');title('lon');hold on;
     subplot(2,3,4);plot(fixed_data(:,1), fixed_data(:,4), 'r.');title('alt');hold on;
     subplot(2,3,5);plot(fixed_data(:,1), fixed_data(:,25), 'r.');title('cov');hold on;
-    subplot(2,3,[3,6]);plot3(orign_e,orign_n,orign_u,'r'); axis equal; view(0,90);title('wy');hold on;
+    subplot(2,3,[3,6]);plot3(orign_e,orign_n,orign_u,'r'); axis equal; view(0,90);title('traj');hold on;
     
 nodata_index = find(isnan(orign_e));
 bp= find((nodata_index(2:end)-nodata_index(1:end-1))>1);
@@ -138,36 +143,53 @@ noised_data = interped_data;
 [orign_e, orign_n, orign_u] = geodetic2enu(interped_data(:,2),interped_data(:,3),interped_data(:,4),...
     interped_data(1,2),interped_data(1,3),interped_data(1,4),wgs84Ellipsoid);
 last_pt_in_bad_area = false;
+last_pt_in_good_area = false;
 edge_index = [];
 for i = 1:length(noised_data)
     % check if in bad gnss area
-    [d, idx] = min(sqrt(sum((bad_gnss_area(:,1:3)-[orign_e(i) orign_n(i) orign_u(i)]).^2,2)));
-    in_bad_gnss_area = d < bad_gnss_area(idx,4);
+    [db, idx_bad] = min(sqrt(sum((bad_gnss_area(:,1:3)-[orign_e(i) orign_n(i) orign_u(i)]).^2,2)));
+    in_bad_gnss_area = db < bad_gnss_area(idx_bad,4);
     
+    [dg, idx_good] = min(sqrt(sum((good_gnss_area(:,1:3)-[orign_e(i) orign_n(i) orign_u(i)]).^2,2)));
+    in_good_gnss_area = dg < good_gnss_area(idx_good,4);
     if in_bad_gnss_area
         % change cov
-        cov = interped_data(i,25) * bad_cov_multipler;
-        noised_data(i,25) = cov + bad_bias;
-        noised_ei = orign_e(i) + BiasGen(interped_data(i,1),bad_bias,0) + randn()*cov;
-        noised_ni = orign_n(i) + BiasGen(interped_data(i,1),bad_bias,1) + randn()*cov;
-        noised_ui = orign_u(i) + BiasGen(interped_data(i,1),0.2*bad_bias,2) + randn()*cov;
+        extra_cov = interped_data(i,25) * bad_cov_multipler;
+        noised_data(i,25) = extra_cov + bad_gnss_area(idx_bad,5) + noised_data(i,25);
+        noised_ei = orign_e(i) + BiasGen(interped_data(i,1),bad_gnss_area(idx_bad,5),4) + randn()*extra_cov;
+        noised_ni = orign_n(i) + BiasGen(interped_data(i,1),bad_gnss_area(idx_bad,5),1) + randn()*extra_cov;
+        noised_ui = orign_u(i) + BiasGen(interped_data(i,1),0.2*bad_gnss_area(idx_bad,5),2) + randn()*extra_cov;
+        [noised_data(i,2),noised_data(i,3),noised_data(i,4)] = ...
+            enu2geodetic(noised_ei, noised_ni, noised_ui,...
+            interped_data(1,2),interped_data(1,3),interped_data(1,4),wgs84Ellipsoid);
+    elseif in_good_gnss_area
+        extra_cov = interped_data(i,25) * good_cov_multipler;
+        noised_data(i,25) = extra_cov + good_gnss_area(idx_good,5) + noised_data(i,25);
+        noised_ei = orign_e(i) + BiasGen(interped_data(i,1),good_gnss_area(idx_good,5),1) + randn()*extra_cov;
+        noised_ni = orign_n(i) + BiasGen(interped_data(i,1),good_gnss_area(idx_good,5),1) + randn()*extra_cov;
+        noised_ui = orign_u(i) + BiasGen(interped_data(i,1),0.2*good_gnss_area(idx_good,5),2) + randn()*extra_cov;
         [noised_data(i,2),noised_data(i,3),noised_data(i,4)] = ...
             enu2geodetic(noised_ei, noised_ni, noised_ui,...
             interped_data(1,2),interped_data(1,3),interped_data(1,4),wgs84Ellipsoid);
     else
-        cov = interped_data(i,25) * good_cov_multipler;
-        noised_data(i,25) = cov + good_bias;
-        noised_ei = orign_e(i) + BiasGen(interped_data(i,1),good_bias,0) + randn()*cov;
-        noised_ni = orign_n(i) + BiasGen(interped_data(i,1),good_bias,1) + randn()*cov;
-        noised_ui = orign_u(i) + BiasGen(interped_data(i,1),0.2*good_bias,2) + randn()*cov;
+        extra_cov = interped_data(i,25) * normal_cov_multipler;
+        noised_data(i,25) = extra_cov + normal_bias + noised_data(i,25);
+        noised_ei = orign_e(i) + BiasGen(interped_data(i,1),normal_bias,0) + randn()*extra_cov;
+        noised_ni = orign_n(i) + BiasGen(interped_data(i,1),normal_bias,1) + randn()*extra_cov;
+        noised_ui = orign_u(i) + BiasGen(interped_data(i,1),0.2*normal_bias,2) + randn()*extra_cov;
         [noised_data(i,2),noised_data(i,3),noised_data(i,4)] = ...
             enu2geodetic(noised_ei, noised_ni, noised_ui,...
             interped_data(1,2),interped_data(1,3),interped_data(1,4),wgs84Ellipsoid);
     end
-    if xor(last_pt_in_bad_area,in_bad_gnss_area && i~=1 && i~= length(noised_data)) % in edge of area
-        edge_index = [edge_index; i];
+    at_bad_edge = xor(last_pt_in_bad_area,in_bad_gnss_area);
+    at_good_edge = xor(last_pt_in_good_area,in_good_gnss_area);
+    if at_bad_edge && i~=1 && i~= length(noised_data) % in edge of bad area
+        edge_index = [edge_index; i 1];
+    elseif at_good_edge && i~=1 && i~= length(noised_data) % in edge of good area
+        edge_index = [edge_index; i 2];
     end
     last_pt_in_bad_area = in_bad_gnss_area;
+    last_pt_in_good_area = in_good_gnss_area;
     str=['gnss 差值加噪声: ',num2str(100*i/length(noised_data)),'%'];
     waitbar(i/length(noised_data),bar,str);
 end
@@ -176,7 +198,12 @@ smooth_len = 100;
 for j = 1:length(gnssdata_col_idx)
     data_col_idx = gnssdata_col_idx(j);
     for i=1:length(edge_index)
-            data_idx = edge_index(i);
+            data_idx = edge_index(i,1);
+            if (edge_index(i,2) == 1)
+                smooth_len = 100;
+            elseif (edge_index(i,2) == 2)
+                smooth_len = 30;
+            end
             if ( data_idx -smooth_len -sample_size < 1 &&...
                     data_idx + smooth_len + sample_size < length(noised_data))
                 y = [ noised_data( data_idx-1, data_col_idx);...
@@ -218,9 +245,12 @@ end
     subplot(2,3,4);plot(noised_data(:,1), noised_data(:,4), 'k.');title('alt');hold on;
     subplot(2,3,5);plot(noised_data(:,1), noised_data(:,25), 'k.');title('cov');hold on;
     subplot(2,3,[3,6]);
-        plot3(noised_e,noised_n,noised_u,'k'); axis equal; view(0,90);title('wy');hold on;
+        plot3(noised_e,noised_n,noised_u,'k'); axis equal; view(0,90);title('traj');hold on;
         for i=1:length(bad_gnss_area)
-            viscircles(bad_gnss_area(i,1:2),bad_gnss_area(i,4));hold on;
+            viscircles(bad_gnss_area(i,1:2),bad_gnss_area(i,4),'Color','r');hold on;
+        end;
+        for i=1:length(good_gnss_area)
+            viscircles(good_gnss_area(i,1:2),good_gnss_area(i,4),'Color','g');hold on;
         end;
 close(bar);
 

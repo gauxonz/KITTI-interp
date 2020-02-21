@@ -1,7 +1,7 @@
 output_data_path = strcat(kitti_path,'/RawDataFixed/',kitti_set,'/',...
     kitti_set,'_drive_',kitti_subset);
 
-save(strcat(output_data_path,'/','matlab_data.mat'));
+save(strcat(output_data_path,'/',output_name,'-matlab_data.mat'));
 %% fixed_data矩阵写出
 bar = waitbar(0,'fixed data矩阵写出');
 [nrows,~] = size(fixed_data);
@@ -79,7 +79,7 @@ close(bar);
 %% interped_data矩阵写出
 bar = waitbar(0,'noised data矩阵写出');
 [nrows,~] = size(noised_data);
-file_path = strcat(output_data_path,'/oxts-noised/data/');
+file_path = strcat(output_data_path,'/oxts-',output_name,'/data/');
 mkdir(file_path);
 
 timestamp_file = strcat(...
@@ -93,7 +93,7 @@ timestamp_posix = strcat(num2str(fix(imu_unsync_timestamp_sec_init + imu_unsync_
                         '.',...
                          num2str(fix(1e9*abs(mod(imu_unsync_timestamp_nsec_init + noised_data(:,1), 1))),'%09d'));
   
-fid_allin1 = fopen(strcat(output_data_path,'/oxts-noised/data.txt'),'w');
+fid_allin1 = fopen(strcat(output_data_path,'/oxts-',output_name,'/data.txt'),'w');
 for i = 1:nrows
    fid = fopen(strcat(file_path, num2str(i-1,'%010d'), '.txt'),'w');
    fprintf(fid,'%.14g ',noised_data(i,2:end));
@@ -107,7 +107,7 @@ end
 fclose(fid_allin1);
 
 
-fid = fopen(strcat(output_data_path,'/oxts-noised/timestamps.txt'),'w');
+fid = fopen(strcat(output_data_path,'/oxts-',output_name,'/timestamps.txt'),'w');
 for i = 1:size(timestamp_file,1)
     fprintf(fid,'%s\n',timestamp_file(i,:));
 end
