@@ -1,34 +1,57 @@
 %% parameters
-normal_cov_multipler = 2;
-normal_bias = 1;
+switch kitti_set
+    case '2011_10_03'
+        switch kitti_subset
+            case '0027'
+                normal_cov_multipler = 2;
+                normal_bias = 1;
 
-bad_cov_multipler = 5;
-bad_gnss_area =	[	27      52	0	60	20;
-                    126     242	0	20	10;
-                    167     144	0   50  10;
-                    277     358	0   30  5;
-                    416     248	0   50  10;
-                    240     -73	0   60  5;
-                    -13     261	0   50  10];
-                
-good_cov_multipler = 1;
-good_gnss_area = [	110     368	0	50	0;
-                    -88     166	0	50	0;
-                    287     199	0	50	0;];
+                bad_cov_multipler = 5;
+                bad_gnss_area =	[	27      52	0	60	20;
+                                    126     242	0	20	10;
+                                    167     144	0   50  10;
+                                    277     358	0   30  5;
+                                    416     248	0   50  10;
+                                    240     -73	0   60  5;
+                                    -13     261	0   50  10];
+
+                good_cov_multipler = 1;
+                good_gnss_area = [	110     368	0	50	0;
+                                    -88     166	0	50	0;
+                                    287     199	0	50	0;];
+             case '0034'
+                normal_cov_multipler = 2;
+                normal_bias = 1;
+
+                bad_cov_multipler = 5;
+                bad_gnss_area =	[	741     602     30	70	20;
+                                    290     275     30	70	10;
+                                    618     153     50  70  10;
+                                    222     -137    30  30  5];
+
+                good_cov_multipler = 1;
+                good_gnss_area = [	925     341	50	50	0;
+                                    22     31	0	50	0;
+                                    516     425 30  60  0];
+        end
+end
 %% plot orign data first
 [orign_e, orign_n, orign_u] = geodetic2enu(fixed_data(:,2),fixed_data(:,3),fixed_data(:,4),...
     fixed_data(1,2),fixed_data(1,3),fixed_data(1,4),wgs84Ellipsoid);
 
 
 gnss_fig_h = figure;
-    gnss_fig_h.Name = 'gnss interp';
+    gnss_fig_h.Name = 'GNSS interpolation and noise';
     figure(gnss_fig_h);
-    subplot(2,3,1);plot(fixed_data(:,1), fixed_data(:,2), 'r.');title('lat');hold on;
-    subplot(2,3,2);plot(fixed_data(:,1), fixed_data(:,3), 'r.');title('lon');hold on;
-    subplot(2,3,4);plot(fixed_data(:,1), fixed_data(:,4), 'r.');title('alt');hold on;
-    subplot(2,3,5);plot(fixed_data(:,1), fixed_data(:,25), 'r.');title('cov');hold on;
-    subplot(2,3,[3,6]);plot3(orign_e,orign_n,orign_u,'r'); axis equal; view(0,90);title('traj');hold on;
+    title('GNSS interpolation and noise');
+    subplot(2,2,1);plot(fixed_data(:,1), fixed_data(:,2), 'k.','MarkerSize',1);title('latitude');hold on;
+    subplot(2,2,2);plot(fixed_data(:,1), fixed_data(:,3), 'k.','MarkerSize',1);title('lontitude');hold on;
+    subplot(2,2,3);plot(fixed_data(:,1), fixed_data(:,4), 'k.','MarkerSize',1);title('alttitude');hold on;
+    subplot(2,2,4);plot(fixed_data(:,1), fixed_data(:,25), 'k.','MarkerSize',1);title('covariance');hold on;
     
+gnss_traj_fig_h = figure;
+    gnss_traj_fig_h.Name = 'GNSS trajectory';
+    gnss_orign_p = plot3(orign_e,orign_n,orign_u,'k'); axis equal; view(0,90);title('Noised KITTI trajectory');hold on;
 nodata_index = find(isnan(orign_e));
 bp= find((nodata_index(2:end)-nodata_index(1:end-1))>1);
 bp_begin_idx = nodata_index([1; bp+1]);
@@ -118,11 +141,13 @@ for i=1:length(bp_begin_idx) %break points numbers %插入点位置为 brp_index
     [interp_e, interp_n, interp_u] = geodetic2enu(yp{i,1},yp{i,2},yp{i,3},...
     fixed_data(1,2),fixed_data(1,3),fixed_data(1,4),wgs84Ellipsoid);
             figure(gnss_fig_h);
-            subplot(231);plot(xp{i}, yp{i,1}, 'b.');hold on;
-            subplot(232);plot(xp{i}, yp{i,2}, 'b.');hold on;
-            subplot(234);plot(xp{i}, yp{i,3}, 'b.');hold on;
-            subplot(235);plot(xp{i}, cov_p{i}, 'b.');hold on;
-            subplot(2,3,[3,6]);plot3(interp_e,interp_n,interp_u,'b.'); axis equal; view(0,90);title('wy');hold on;
+            subplot(221);plot(xp{i}, yp{i,1}, 'b.','MarkerSize',1);hold on;
+            subplot(222);plot(xp{i}, yp{i,2}, 'b.','MarkerSize',1);hold on;
+            subplot(223);plot(xp{i}, yp{i,3}, 'b.','MarkerSize',1);hold on;
+            subplot(224);plot(xp{i}, cov_p{i}, 'b.','MarkerSize',1);hold on;
+            
+            figure(gnss_traj_fig_h);
+            gnss_interp_p =plot3(interp_e,interp_n,interp_u,'Color',[153, 153, 153]/255); axis equal; view(0,90);hold on;
 end
 % write back 
 for j = 1:length(gnssdata_col_idx)
@@ -240,18 +265,30 @@ end
     interped_data(1,2),interped_data(1,3),interped_data(1,4),wgs84Ellipsoid);
 
     figure(gnss_fig_h);
-    subplot(2,3,1);plot(noised_data(:,1), noised_data(:,2), 'k.');title('lat');hold on;
-    subplot(2,3,2);plot(noised_data(:,1), noised_data(:,3), 'k.');title('lon');hold on;
-    subplot(2,3,4);plot(noised_data(:,1), noised_data(:,4), 'k.');title('alt');hold on;
-    subplot(2,3,5);plot(noised_data(:,1), noised_data(:,25), 'k.');title('cov');hold on;
-    subplot(2,3,[3,6]);
-        plot3(noised_e,noised_n,noised_u,'k'); axis equal; view(0,90);title('traj');hold on;
-        for i=1:length(bad_gnss_area)
-            viscircles(bad_gnss_area(i,1:2),bad_gnss_area(i,4),'Color','r');hold on;
-        end;
-        for i=1:length(good_gnss_area)
-            viscircles(good_gnss_area(i,1:2),good_gnss_area(i,4),'Color','g');hold on;
-        end;
+    subplot(2,2,1);plot(noised_data(:,1), noised_data(:,2), 'r.','MarkerSize',1);hold on;
+    subplot(2,2,2);plot(noised_data(:,1), noised_data(:,3), 'r.','MarkerSize',1);hold on;
+    subplot(2,2,3);plot(noised_data(:,1), noised_data(:,4), 'r.','MarkerSize',1);hold on;
+    subplot(2,2,4);plot(noised_data(:,1), noised_data(:,25), 'r','MarkerSize',1);hold on;
+
+    figure(gnss_traj_fig_h);
+            gnss_noise_p = plot3(noised_e,noised_n,noised_u,'Color',[0, 153, 255]/255); axis equal; view(0,90);hold on;
+            for i=1:size(bad_gnss_area,1)
+                %viscircles(bad_gnss_area(i,1:2),bad_gnss_area(i,4),'Color','r');hold on;
+                bad_circle_p = rectangle('Position',[bad_gnss_area(i,1)-bad_gnss_area(i,4),bad_gnss_area(i,2)-bad_gnss_area(i,4),...
+                    2*bad_gnss_area(i,4),2*bad_gnss_area(i,4)],'Curvature',[1 1],'EdgeColor','r','LineWidth',2);hold on;
+            end;
+            for i=1:size(good_gnss_area,1)
+                %good_circle_p = viscircles(good_gnss_area(i,1:2),good_gnss_area(i,4),'Color','g');hold on;
+                good_circle_p = rectangle('Position',[good_gnss_area(i,1)-good_gnss_area(i,4),good_gnss_area(i,2)-good_gnss_area(i,4),...
+                    2*good_gnss_area(i,4),2*good_gnss_area(i,4)],'Curvature',[1 1],'EdgeColor','g','LineWidth',2);hold on;
+            end;
+            fake_bad_circle_p = line(NaN,NaN,'Color','w');
+            fake_good_circle_p = line(NaN,NaN,'Color','w');
+            legend([gnss_orign_p gnss_noise_p fake_bad_circle_p fake_good_circle_p],'orign', 'noised', 'bad gnss area','good gnss area');
+            xlabel('m','Interpreter','latex',...
+                'FontSize',12);
+            ylabel('m','Interpreter','latex',...
+                'FontSize',12);
 close(bar);
 
 

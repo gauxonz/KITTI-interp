@@ -1,6 +1,6 @@
 output_data_path = strcat(kitti_path,'/RawDataFixed/',kitti_set,'/',...
     kitti_set,'_drive_',kitti_subset);
-
+mkdir(output_data_path);
 save(strcat(output_data_path,'/',output_name,'-matlab_data.mat'));
 %% fixed_data矩阵写出
 bar = waitbar(0,'fixed data矩阵写出');
