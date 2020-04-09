@@ -8,7 +8,7 @@ unsynced_data_path = strcat(kitti_path,'/RawDataUnsync/',kitti_set,'/',...
 synced_data_path = strcat(kitti_path,'/RawData/',kitti_set,'/',...
     kitti_set,'_drive_',kitti_subset,'_sync');
 
-bar = waitbar(0,'开始读取数据');
+bar = waitbar(0,'Begin read data');
 %% unsynced image data
 waitbar(0,bar,'1/4: unsynced image');
 img0_unsync_path = strcat(unsynced_data_path,'/image_00');

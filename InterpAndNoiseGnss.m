@@ -1,40 +1,103 @@
-%% parameters
+%% parameters and models
 switch kitti_set
     case '2011_10_03'
         switch kitti_subset
-            case '0027'
-                normal_cov_multipler = 2;
-                normal_bias = 1;
+            case '0027' % sub case 1:begin with bad gnss
+                switch kitti_subset_case
+                    case '01' % sub case 1: begin with bad gnss
+                        regular_std_level = 0.5; % meter
+                        regular_bias = 0.5;
+                        % WN-L: white noise level, in meter. white noise is
+                        % given by :
+                        % GWN((WN-L / mean(orignal_std)) * orignal_std(i))
+                        % set to 0 to add no addtional noise (in good area)
+                        % MP-B: multipath bias level
+                        %                   x	y    z  rd  WN-L MP-B      
+                        bad_gnss_area =	[	24	46	 0	60	5	15;
+                                            126	242	 0	20	3   5;
+                                            167	144	 0   50  4   9;
+                                            277	358	 0   30  5   8;
+                                            416	248	 0   50  4   10;
+                                            240	-73	 0   60  3   4;
+                                            -13	261	 0   50  5   7];
+                                        
+                        good_gnss_area = [	110	368	 0	50	0   0;
+                                            -88	166	 0	50	0   0;
+                                            287	199	 0	50	0	0];
+                        
+                    case '02' % sub case 2: begin with good gnss
+                        regular_std_level = 0.5; % meter
+                        regular_bias = 0.5;
+                        bad_gnss_area =	[   126	242	 0	20	5   10;
+                                            277	358	 0   30  3   5;
+                                            110	368	 0	50	4   11;
+                                            -88	166	 0	50	2   8;
+                                            287	199	 0	50	5   5;
+                                            -13	261	 0   50  3   7];
 
-                bad_cov_multipler = 5;
-                bad_gnss_area =	[	27      52	0	60	20;
-                                    126     242	0	20	10;
-                                    167     144	0   50  10;
-                                    277     358	0   30  5;
-                                    416     248	0   50  10;
-                                    240     -73	0   60  5;
-                                    -13     261	0   50  10];
+                                        
+                        good_gnss_area = [	27	52	 0	60	0   0;
+                                            167	144	 0   50  0   0;
+                                            416	248	 0   50  0   0;
+                                            240	-73	 0   60  0   0];
+                   	case '03' % sub case 3: one big bad, begin with bad gnss
+                        regular_std_level = 0.5; % meter
+                        regular_bias = 0.5;
+                        bad_gnss_area =	[	72  143	 0	200	5   5];
 
-                good_cov_multipler = 1;
-                good_gnss_area = [	110     368	0	50	0;
-                                    -88     166	0	50	0;
-                                    287     199	0	50	0;];
+                        good_gnss_area = [	0	0	 0	0	0   0];
+                        
+                    case '04' % sub case 3: one big bad, begin with bad gnss
+                        regular_std_level = 0.5; % meter
+                        regular_bias = 0.5;
+                        
+                        bad_gnss_area =	[	248	297	 0	200	5   5];
+                        good_gnss_area = [	0	0	 0	0   0   0];
+                end
+            
              case '0034'
-                normal_cov_multipler = 2;
-                normal_bias = 1;
-
-                bad_cov_multipler = 5;
-                bad_gnss_area =	[	741     602     30	70	20;
-                                    290     275     30	70	10;
-                                    618     153     50  70  10;
-                                    222     -137    30  30  5];
-
-                good_cov_multipler = 1;
-                good_gnss_area = [	925     341	50	50	0;
-                                    22     31	0	50	0;
-                                    516     425 30  60  0];
+                regular_std_level = 0.5; % meter
+                regular_bias = 0.5;
+                bad_gnss_area =	[	741	602  0	30	5	12;
+                                    290	275	 0	30	5	7;
+                                    618	153  0	50  3   8;
+                                    222	-137 0	30	4   9];
+                                
+                good_gnss_area = [	925	341	50	50	0   0;
+                                    22	31	0	50	0   0;
+                                    516	425 30  60  0   0];
         end
 end
+% generate Random Vector Field to simulate Multu-path Bias
+
+
+grid_size = 0.2; % [meter]
+c1 = 150;
+c2 = c1;
+
+time_corr=1; % 1s corralation
+MultipathDetectCo = 0.8;
+
+plot_GRF = false;
+save_figs = false;
+
+minx = floor(min(orign_e));
+maxx = ceil(max(orign_e));
+
+miny = floor(min(orign_n));
+maxy = ceil(max(orign_n));
+
+x = minx-grid_size:grid_size:maxx+grid_size;
+y = miny-grid_size:grid_size:maxy+grid_size;
+
+rho=@(h)((1-h(1)^2/c1^2-h(1)*h(2)/(c2*c1)-h(2)^2/c2^2)...
+ *exp(-(h(1)^2/c1^2+h(2)^2/c2^2))); % define covariance function
+rng(3)
+[FF1,FF2,tx,ty] = stationary_Gaussian_process(length(y),length(x),rho); % plot when no output wanted  
+FF1 = FF1';
+FF2 = FF2';
+
+
 %% plot orign data first
 [orign_e, orign_n, orign_u] = geodetic2enu(fixed_data(:,2),fixed_data(:,3),fixed_data(:,4),...
     fixed_data(1,2),fixed_data(1,3),fixed_data(1,4),wgs84Ellipsoid);
@@ -43,7 +106,8 @@ end
 gnss_fig_h = figure;
     gnss_fig_h.Name = 'GNSS interpolation and noise';
     figure(gnss_fig_h);
-    title('GNSS interpolation and noise');
+    title('GNSS interpolation and noise','FontSize',13,...
+        'FontName','Times New Roman');
     subplot(2,2,1);plot(fixed_data(:,1), fixed_data(:,2), 'k.','MarkerSize',1);title('latitude');hold on;
     subplot(2,2,2);plot(fixed_data(:,1), fixed_data(:,3), 'k.','MarkerSize',1);title('lontitude');hold on;
     subplot(2,2,3);plot(fixed_data(:,1), fixed_data(:,4), 'k.','MarkerSize',1);title('alttitude');hold on;
@@ -51,14 +115,25 @@ gnss_fig_h = figure;
     
 gnss_traj_fig_h = figure;
     gnss_traj_fig_h.Name = 'GNSS trajectory';
-    gnss_orign_p = plot3(orign_e,orign_n,orign_u,'k'); axis equal; view(0,90);title('Noised KITTI trajectory');hold on;
+    gnss_orign_p = plot3(orign_e,orign_n,orign_u,'k'); axis equal; view(0,90);
+    title(strcat('Simulated intermittent GNSS-denied environment case',{' '},num2str(str2num(kitti_subset_case))),'FontSize',13,...
+        'FontName','Times New Roman');
+    hold on;
+    if plot_GRF
+        g = 50;
+        qv_p = quiver(x(1:g:end),y(1:g:end),FF1(1:g:end,1:g:end)',FF2(1:g:end,1:g:end)',...
+        'Color',[0.5,0.5,0.5,0.5],'AutoScaleFactor',1.5);
+        title('Simulating GNSS multipath bias with GRF','FontSize',13,...
+        'FontName','Times New Roman');
+    end
+
 nodata_index = find(isnan(orign_e));
 bp= find((nodata_index(2:end)-nodata_index(1:end-1))>1);
 bp_begin_idx = nodata_index([1; bp+1]);
 bp_length = [bp(1);bp(2:end)-bp(1:end-1);...
     nodata_index(end)-bp_begin_idx(end)+1];
 
-bar = waitbar(0,'gnss 差值加噪声');
+bar = waitbar(0,'Noising GNSS');
 %% gnss数据插值:
 %处理断点
 gnssdata_col_idx = [2,3,4];
@@ -170,42 +245,51 @@ noised_data = interped_data;
 last_pt_in_bad_area = false;
 last_pt_in_good_area = false;
 edge_index = [];
-for i = 1:length(noised_data)
+
+data_leng = length(noised_data);
+gt_mean_std = mean(interped_data(:,25));
+gt_mean_dt = mean(interped_data(2:end,1)-interped_data(1:end-1,1));
+
+a = floor(time_corr/gt_mean_dt);
+rho=@(h)((1-h(1)^2/a^2-h(1)*h(2)/a-h(2)^2)...
+ *exp(-(h(1)^2/a^2+h(2)^2))); % define covariance function
+[e_noise,n_noise,~,~] = stationary_Gaussian_process(1,data_leng,rho); % plot when no output wanted  
+[u_noise,~,~,~] = stationary_Gaussian_process(1,data_leng,rho); % plot when no output wanted  
+GM_noise_base = [e_noise' n_noise' u_noise'];
+
+
+for i = 1:floor(data_leng)
     % check if in bad gnss area
     [db, idx_bad] = min(sqrt(sum((bad_gnss_area(:,1:3)-[orign_e(i) orign_n(i) orign_u(i)]).^2,2)));
     in_bad_gnss_area = db < bad_gnss_area(idx_bad,4);
     
     [dg, idx_good] = min(sqrt(sum((good_gnss_area(:,1:3)-[orign_e(i) orign_n(i) orign_u(i)]).^2,2)));
     in_good_gnss_area = dg < good_gnss_area(idx_good,4);
+    
+    Xidx = floor((orign_e(i)-minx)/grid_size);
+    Yidx = floor((orign_n(i)-miny)/grid_size);
+    
     if in_bad_gnss_area
-        % change cov
-        extra_cov = interped_data(i,25) * bad_cov_multipler;
-        noised_data(i,25) = extra_cov + bad_gnss_area(idx_bad,5) + noised_data(i,25);
-        noised_ei = orign_e(i) + BiasGen(interped_data(i,1),bad_gnss_area(idx_bad,5),4) + randn()*extra_cov;
-        noised_ni = orign_n(i) + BiasGen(interped_data(i,1),bad_gnss_area(idx_bad,5),1) + randn()*extra_cov;
-        noised_ui = orign_u(i) + BiasGen(interped_data(i,1),0.2*bad_gnss_area(idx_bad,5),2) + randn()*extra_cov;
-        [noised_data(i,2),noised_data(i,3),noised_data(i,4)] = ...
-            enu2geodetic(noised_ei, noised_ni, noised_ui,...
-            interped_data(1,2),interped_data(1,3),interped_data(1,4),wgs84Ellipsoid);
+        WhiteNoiseLevel = interped_data(i,25) * (bad_gnss_area(idx_bad,5) / gt_mean_std);
+        BiasLevel = bad_gnss_area(idx_bad,6);
     elseif in_good_gnss_area
-        extra_cov = interped_data(i,25) * good_cov_multipler;
-        noised_data(i,25) = extra_cov + good_gnss_area(idx_good,5) + noised_data(i,25);
-        noised_ei = orign_e(i) + BiasGen(interped_data(i,1),good_gnss_area(idx_good,5),1) + randn()*extra_cov;
-        noised_ni = orign_n(i) + BiasGen(interped_data(i,1),good_gnss_area(idx_good,5),1) + randn()*extra_cov;
-        noised_ui = orign_u(i) + BiasGen(interped_data(i,1),0.2*good_gnss_area(idx_good,5),2) + randn()*extra_cov;
-        [noised_data(i,2),noised_data(i,3),noised_data(i,4)] = ...
-            enu2geodetic(noised_ei, noised_ni, noised_ui,...
-            interped_data(1,2),interped_data(1,3),interped_data(1,4),wgs84Ellipsoid);
+        WhiteNoiseLevel = interped_data(i,25) * (good_gnss_area(idx_good,5) / gt_mean_std);
+        BiasLevel = good_gnss_area(idx_good,6);
     else
-        extra_cov = interped_data(i,25) * normal_cov_multipler;
-        noised_data(i,25) = extra_cov + normal_bias + noised_data(i,25);
-        noised_ei = orign_e(i) + BiasGen(interped_data(i,1),normal_bias,0) + randn()*extra_cov;
-        noised_ni = orign_n(i) + BiasGen(interped_data(i,1),normal_bias,1) + randn()*extra_cov;
-        noised_ui = orign_u(i) + BiasGen(interped_data(i,1),0.2*normal_bias,2) + randn()*extra_cov;
-        [noised_data(i,2),noised_data(i,3),noised_data(i,4)] = ...
-            enu2geodetic(noised_ei, noised_ni, noised_ui,...
-            interped_data(1,2),interped_data(1,3),interped_data(1,4),wgs84Ellipsoid);
+        WhiteNoiseLevel = interped_data(i,25) * (regular_std_level / gt_mean_std);
+        BiasLevel = regular_bias;
     end
+    %WhiteNoiseLevel = 0;
+    MP_Bias = BiasLevel/1.4142 * [FF1(Xidx,Yidx) FF2(Xidx,Yidx)];
+    
+    noised_data(i,25) = WhiteNoiseLevel + MultipathDetectCo * BiasLevel + interped_data(i,25);
+    noised_ei = orign_e(i) + GM_noise_base(i,1)*WhiteNoiseLevel+ MP_Bias(1);
+    noised_ni = orign_n(i) + GM_noise_base(i,2)*WhiteNoiseLevel+ MP_Bias(2);
+    noised_ui = orign_u(i) + GM_noise_base(i,3)*WhiteNoiseLevel;
+    [noised_data(i,2),noised_data(i,3),noised_data(i,4)] = ...
+        enu2geodetic(noised_ei, noised_ni, noised_ui,...
+        interped_data(1,2),interped_data(1,3),interped_data(1,4),wgs84Ellipsoid);
+        
     at_bad_edge = xor(last_pt_in_bad_area,in_bad_gnss_area);
     at_good_edge = xor(last_pt_in_good_area,in_good_gnss_area);
     if at_bad_edge && i~=1 && i~= length(noised_data) % in edge of bad area
@@ -215,7 +299,7 @@ for i = 1:length(noised_data)
     end
     last_pt_in_bad_area = in_bad_gnss_area;
     last_pt_in_good_area = in_good_gnss_area;
-    str=['gnss 差值加噪声: ',num2str(100*i/length(noised_data)),'%'];
+    str=['Noising GNSS: ',num2str(100*i/length(noised_data)),' percent'];
     waitbar(i/length(noised_data),bar,str);
 end
 % smooth the edge
@@ -239,6 +323,10 @@ for j = 1:length(gnssdata_col_idx)
                 xp = noised_data( data_idx : data_idx + smooth_len - 1, 1);
                 noised_data( data_idx :  + smooth_len - 1,...
                     data_col_idx) = interp1(x,y,xp,'PCHIP');
+                
+                y_std = [ noised_data( data_idx-1, 25);...
+                      noised_data( data_idx + smooth_len : data_idx +smooth_len +sample_size, 25)];
+                noised_data( data_idx :  + smooth_len - 1,25) = interp1(x,y_std,xp,'linear');
             elseif ( data_idx -smooth_len -sample_size > 1 &&...
                      data_idx + smooth_len +sample_size > length(noised_data))
                 y = [ noised_data( data_idx-1 -smooth_len -sample_size : data_idx -1 -smooth_len, data_col_idx);...
@@ -249,6 +337,10 @@ for j = 1:length(gnssdata_col_idx)
                 xp = noised_data( data_idx -smooth_len : data_idx - 1, 1);
                 noised_data( data_idx -smooth_len : data_idx - 1,...
                     data_col_idx) = interp1(x,y,xp,'PCHIP');
+                
+                y_std = [ noised_data( data_idx-1 -smooth_len -sample_size : data_idx -1 -smooth_len, 25);...
+                      noised_data( data_idx, 25)];
+                noised_data( data_idx -smooth_len : data_idx - 1, 25) = interp1(x,y_std,xp,'linear');
             else
                 y = [ noised_data( data_idx-1 -smooth_len -sample_size : data_idx -1 -smooth_len, data_col_idx);...
                       noised_data( data_idx + smooth_len : data_idx +smooth_len +sample_size, data_col_idx)];
@@ -258,6 +350,10 @@ for j = 1:length(gnssdata_col_idx)
                 xp = noised_data( data_idx -smooth_len : data_idx + smooth_len - 1, 1);
                 noised_data( data_idx -smooth_len : data_idx + smooth_len - 1,...
                     data_col_idx) = interp1(x,y,xp,'PCHIP');
+                
+                y_std = [ noised_data( data_idx-1 -smooth_len -sample_size : data_idx -1 -smooth_len, 25);...
+                      noised_data( data_idx + smooth_len : data_idx +smooth_len +sample_size, 25)];
+                noised_data( data_idx -smooth_len : data_idx + smooth_len - 1, 25) = interp1(x,y_std,xp,'linear');
             end
     end
 end
@@ -284,13 +380,29 @@ end
             end;
             fake_bad_circle_p = line(NaN,NaN,'Color','w');
             fake_good_circle_p = line(NaN,NaN,'Color','w');
-            legend([gnss_orign_p gnss_noise_p fake_bad_circle_p fake_good_circle_p],'orign', 'noised', 'bad gnss area','good gnss area');
-            xlabel('m','Interpreter','latex',...
-                'FontSize',12);
-            ylabel('m','Interpreter','latex',...
-                'FontSize',12);
+            if ~plot_GRF
+                l = legend([gnss_orign_p gnss_noise_p fake_bad_circle_p fake_good_circle_p],...
+                    'Orignal', 'Noised', 'Degraded area','Decent area',...
+                    'Location','southeast');
+            else
+                l = legend([gnss_orign_p gnss_noise_p fake_bad_circle_p fake_good_circle_p, qv_p],...
+                'Orignal', 'Noised', 'Degraded area\newline','Decent area\newline', 'GRF',...
+                'Location','southeast');
+            end
+            l.FontSize = 10;
+            l.FontName = 'Times New Roman';
+            l.Position = [0.68 0.36 0.21 0.18];
+            xlabel('$\mathcal{F}_{\mathcal{L}}$:X(East)[m]','Interpreter','latex',...
+                'FontSize',12,'FontName','Times New Roman');
+            ylabel('$\mathcal{F}_{\mathcal{L}}$:Y(North)[m]','Interpreter','latex',...
+                'FontSize',12,'FontName','Times New Roman');set(gcf, 'Color', 'w');
+            set(gca, 'Color', 'w');
+            if save_figs
+                export_fig(strcat(output_data_path,'/oxts-',output_name,'/',output_name,'.eps'));
+                fig2svg
+                export_fig(strcat(output_data_path,'/oxts-',output_name,'/',output_name,'.svg'));
+            end
 close(bar);
-
 
 
 
