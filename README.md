@@ -83,7 +83,7 @@ and then visual check on the time alignment: the square, synced IMU data should 
 
 Next, do another visual check on the time interpolation: there should be no outliers and negative values on the fixed data (blue point).
 
-![imu_time](doc/imu_time.svg)
+![imu_time](doc/imu_time.png)
 
 ### Interpolate and noise GNSS data
 
