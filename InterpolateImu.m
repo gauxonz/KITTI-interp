@@ -46,9 +46,9 @@ if(plot_result)
     imu_fig_wz_h = figure;
     figure(imu_fig_wz_h);
     orign_p = plot(imu_unsync_data(:,1), imu_unsync_data(:,21), 'r.','MarkerSize',1);hold on;
-    title('IMU interpolation on $\omega_z$','Interpreter','latex','FontName','Times New Roman');
-    xlabel('time (s)','FontSize',12,'FontName','Times New Roman');
-    ylabel('angular speed (rad/s)','FontSize',12,'FontName','Times New Roman');
+    %title('IMU interpolation on $\omega_z$','Interpreter','latex','FontName','Times New Roman');
+    xlabel('Time [s]','FontSize',12,'FontName','Times New Roman');
+    ylabel('Angular speed [rad/s]','FontSize',12,'FontName','Times New Roman');
 end
 %imu_unsync_data = imu_unsync_data2;
 dt = imu_unsync_data(2:end,1) - imu_unsync_data(1:end-1,1);
@@ -225,7 +225,11 @@ if(plot_result)
     h = legend([fake_orign_p fake_interp_p],'Original unsynced data', 'Interpolated data');
     h.FontSize = 12;
     h.FontName = 'Times New Roman';
-    
+        set(gca, 'Color', 'w');
+        set(imu_fig_wz_h, 'Color', 'w');
+        set(imu_fig_wz_h,'PaperSize',0.6*[25 19]);
+        print('-dpdf','-painters',strcat('imu_interp.pdf'));
+        
     imu_time_fig_h = figure;
     imu_time_fig_h.Name = 'imu time interp';
     figure(imu_time_fig_h);
@@ -235,10 +239,10 @@ if(plot_result)
         h=legend('Unsynced IMU data','Synced IMU data','Aligned unsynced IMU data');
         h.FontSize = 12;
         h.FontName = 'Times New Roman';
-        title('Unsynchronized data alignment','FontSize',12,'FontName','Times New Roman');
-        xlabel('time (s)','FontSize',12,'FontName','Times New Roman');
-        ylabel('angular speed (rad/s)','FontSize',12,'FontName','Times New Roman');
-        
+        %title('Unsynchronized data alignment','FontSize',12,'FontName','Times New Roman');
+        xlabel('Time [s]','FontSize',12,'FontName','Times New Roman');
+        ylabel('Angular speed [rad/s]','FontSize',12,'FontName','Times New Roman');
+
     imu_dt_fig_h = figure;
     imu_dt_fig_h.Name = 'imu dt interp';
     figure(imu_dt_fig_h);

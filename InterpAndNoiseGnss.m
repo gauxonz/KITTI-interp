@@ -70,6 +70,8 @@ switch kitti_set
 end
 % generate Random Vector Field to simulate Multu-path Bias
 
+[orign_e, orign_n, orign_u] = geodetic2enu(fixed_data(:,2),fixed_data(:,3),fixed_data(:,4),...
+    fixed_data(1,2),fixed_data(1,3),fixed_data(1,4),wgs84Ellipsoid);
 
 grid_size = 0.2; % [meter]
 c1 = 150;
@@ -79,7 +81,7 @@ time_corr=1; % 1s corralation
 MultipathDetectCo = 0.8;
 
 plot_GRF = false;
-save_figs = false;
+save_figs = true;
 
 minx = floor(min(orign_e));
 maxx = ceil(max(orign_e));
@@ -99,15 +101,14 @@ FF2 = FF2';
 
 
 %% plot orign data first
-[orign_e, orign_n, orign_u] = geodetic2enu(fixed_data(:,2),fixed_data(:,3),fixed_data(:,4),...
-    fixed_data(1,2),fixed_data(1,3),fixed_data(1,4),wgs84Ellipsoid);
+
 
 
 gnss_fig_h = figure;
     gnss_fig_h.Name = 'GNSS interpolation and noise';
     figure(gnss_fig_h);
-    title('GNSS interpolation and noise','FontSize',13,...
-        'FontName','Times New Roman');
+    %title('GNSS interpolation and noise','FontSize',13,...
+    %    'FontName','Times New Roman');
     subplot(2,2,1);plot(fixed_data(:,1), fixed_data(:,2), 'k.','MarkerSize',1);title('latitude');hold on;
     subplot(2,2,2);plot(fixed_data(:,1), fixed_data(:,3), 'k.','MarkerSize',1);title('lontitude');hold on;
     subplot(2,2,3);plot(fixed_data(:,1), fixed_data(:,4), 'k.','MarkerSize',1);title('alttitude');hold on;
@@ -116,15 +117,15 @@ gnss_fig_h = figure;
 gnss_traj_fig_h = figure;
     gnss_traj_fig_h.Name = 'GNSS trajectory';
     gnss_orign_p = plot3(orign_e,orign_n,orign_u,'k'); axis equal; view(0,90);
-    title(strcat('Simulated intermittent GNSS-denied environment case',{' '},num2str(str2num(kitti_subset_case))),'FontSize',13,...
-        'FontName','Times New Roman');
+    %title(strcat('Simulated intermittent GNSS-denied environment case',{' '},num2str(str2num(kitti_subset_case))),'FontSize',13,...
+    %    'FontName','Times New Roman');
     hold on;
     if plot_GRF
         g = 50;
         qv_p = quiver(x(1:g:end),y(1:g:end),FF1(1:g:end,1:g:end)',FF2(1:g:end,1:g:end)',...
         'Color',[0.5,0.5,0.5,0.5],'AutoScaleFactor',1.5);
-        title('Simulating GNSS multipath bias with GRF','FontSize',13,...
-        'FontName','Times New Roman');
+        %title('Simulating GNSS multipath bias with GRF','FontSize',13,...
+        %'FontName','Times New Roman');
     end
 
 nodata_index = find(isnan(orign_e));
@@ -382,25 +383,32 @@ end
             fake_good_circle_p = line(NaN,NaN,'Color','w');
             if ~plot_GRF
                 l = legend([gnss_orign_p gnss_noise_p fake_bad_circle_p fake_good_circle_p],...
-                    'Orignal', 'Noised', 'Degraded area','Decent area',...
+                    'Original', 'Noised', 'Degraded area','Decent area',...
                     'Location','southeast');
             else
                 l = legend([gnss_orign_p gnss_noise_p fake_bad_circle_p fake_good_circle_p, qv_p],...
-                'Orignal', 'Noised', 'Degraded area\newline','Decent area\newline', 'GRF',...
+                'Original', 'Noised', 'Degraded area\newline','Decent area\newline', 'GRF',...
                 'Location','southeast');
             end
             l.FontSize = 10;
             l.FontName = 'Times New Roman';
             l.Position = [0.68 0.36 0.21 0.18];
-            xlabel('$\mathcal{F}_{\mathcal{L}}$:X(East)[m]','Interpreter','latex',...
+            xlabel('$\mathcal{F}_{\mathcal{L}}$:X (East) [m]','Interpreter','latex',...
                 'FontSize',12,'FontName','Times New Roman');
-            ylabel('$\mathcal{F}_{\mathcal{L}}$:Y(North)[m]','Interpreter','latex',...
-                'FontSize',12,'FontName','Times New Roman');set(gcf, 'Color', 'w');
+            ylabel('$\mathcal{F}_{\mathcal{L}}$:Y (North) [m]','Interpreter','latex',...
+                'FontSize',12,'FontName','Times New Roman');
             set(gca, 'Color', 'w');
+            set(gnss_traj_fig_h, 'Color', 'w');
+            set(gnss_traj_fig_h,'PaperSize',[13 11]);
+            %set(gnss_traj_fig_h,'PaperPositionMode','auto')
             if save_figs
-                export_fig(strcat(output_data_path,'/oxts-',output_name,'/',output_name,'.eps'));
-                fig2svg
-                export_fig(strcat(output_data_path,'/oxts-',output_name,'/',output_name,'.svg'));
+                mkdir(strcat(output_data_path,'/oxts-',output_name));
+                %export_fig(strcat(output_path,'/oxts-',output_name,'/',output_name,'.eps'));
+                %print('-depsc', strcat(output_data_path,'/oxts-',output_name,'/',output_name,'.eps'));
+                %print('-depsc','-tiff', '-r100', '-painters', strcat(output_data_path,'/oxts-',output_name,'/',output_name,'.eps'));
+                print('-dpdf','-painters',strcat(output_data_path,'/oxts-',output_name,'/',output_name,'.pdf'));
+                %fig2svg
+                %export_fig(strcat(output_data_path,'/oxts-',output_name,'/',output_name,'.svg'));
             end
 close(bar);
 

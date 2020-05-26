@@ -1,9 +1,6 @@
-output_data_path = strcat(kitti_path,'/RawDataFixed/',kitti_set,'/',...
-    kitti_set,'_drive_',kitti_subset);
-mkdir(output_data_path);
 save(strcat(output_data_path,'/',output_name,'-matlab_data.mat'));
-write_fix = true;
-write_interp = true;
+write_fix = false;
+write_interp = false;
 write_noise = true;
 %% fixed_data write out
 if write_fix
