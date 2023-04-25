@@ -91,7 +91,7 @@ for i=1:length(brp_index)
     if (brp_index(i) > 5) % this only not happens in kitti 00
         p=polyfit([brp_index(i)-3:brp_index(i)]',imu_unsync_data(brp_index(i)-3:brp_index(i),1),1);
         prob_index = brp_index(i);
-        while (prob_index<length(imu_unsync_data) && prob_index < brp_index(i)+1000 )
+        while (prob_index<=length(imu_unsync_data) - prob_step && prob_index < brp_index(i)+1000 )
             prob_index = prob_index + prob_step;
             dist = abs(polyval(p, prob_index) - imu_unsync_data(prob_index,1));
             if dist < 1e-3
@@ -201,6 +201,9 @@ for m=1:brp_size %插入点位置为 brp_index
             
             figure(imu_fig_wz_h);
             plot(ins_matrix(:,1), ins_matrix(:,21), 'b.','MarkerSize',1);hold on;
+            % for a clearer view of the interpolated position
+            plot(ins_matrix(1,1), ins_matrix(1,21), 'bo', 'MarkerSize',5); hold on;
+            plot(ins_matrix(end,1), ins_matrix(end,21), 'bo', 'MarkerSize',5); hold on;
         end
 end
 imu_time_const_bias = mean(img_unsync_timestamp(1:length(img_sync_timestamp)) - img_sync_timestamp)...
